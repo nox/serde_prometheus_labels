@@ -12,7 +12,7 @@ use std::io::Write;
 ///
 /// For struct fields, the supported values are scalars, strings, and bytes
 /// that can be converted to strings. Nones and units are ignored, and unit
-/// variants are serialized are their name. Anything else results in an error.
+/// variants are serialized as their name. Anything else results in an error.
 ///
 /// Prometheus labels are a sequence of comma-separated key-value pairs
 /// as specified by the [Prometheus documentation][doc].

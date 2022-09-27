@@ -34,6 +34,6 @@ pub fn to_vec(value: impl Serialize) -> Result<Vec<u8>, Error> {
 /// Serializes `value` into [`writer`][Write].
 ///
 /// See [`serializer`] for information about the data format.
-pub fn to_writer(writer: &mut impl Write, value: impl Serialize) -> Result<(), Error> {
+pub fn to_writer(writer: &mut (impl ?Sized + Write), value: impl Serialize) -> Result<(), Error> {
     value.serialize(serializer(writer))
 }

@@ -18,11 +18,16 @@ use std::io::Write;
 /// as specified by the [Prometheus documentation][doc].
 ///
 /// [doc]: https://github.com/prometheus/docs/blob/main/content/docs/instrumenting/exposition_formats.md#text-format-details
-pub fn serializer(writer: &mut impl Write) -> impl Serializer<Ok = (), Error = Error> + '_ {
+pub fn serializer(
+    writer: &mut (impl ?Sized + Write),
+) -> impl Serializer<Ok = (), Error = Error> + '_ {
     TopSerializer { writer }
 }
 
-struct TopSerializer<'w, W> {
+struct TopSerializer<'w, W>
+where
+    W: ?Sized,
+{
     writer: &'w mut W,
 }
 
@@ -37,7 +42,7 @@ macro_rules! unsupported_scalars {
 
 impl<'w, W> Serializer for TopSerializer<'w, W>
 where
-    W: Write,
+    W: ?Sized + Write,
 {
     type Ok = ();
     type Error = Error;
@@ -188,14 +193,17 @@ where
     }
 }
 
-struct StructSerializer<'w, W> {
+struct StructSerializer<'w, W>
+where
+    W: ?Sized,
+{
     should_write_comma: ShouldWriteComma,
     writer: &'w mut W,
 }
 
 impl<W> SerializeStruct for StructSerializer<'_, W>
 where
-    W: Write,
+    W: ?Sized + Write,
 {
     type Ok = ();
     type Error = Error;

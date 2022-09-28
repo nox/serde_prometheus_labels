@@ -12,7 +12,7 @@ pub use self::top::serializer;
 /// Serializes `value` into a [`String`].
 ///
 /// See [`serializer`] for information about the data format.
-pub fn to_string(value: impl Serialize) -> Result<String, Error> {
+pub fn to_string(value: &impl Serialize) -> Result<String, Error> {
     let vec = to_vec(value)?;
 
     Ok(if cfg!(debug_assertions) {
@@ -25,7 +25,7 @@ pub fn to_string(value: impl Serialize) -> Result<String, Error> {
 /// Serializes `value` into a [`Vec<u8>`].
 ///
 /// See [`serializer`] for information about the data format.
-pub fn to_vec(value: impl Serialize) -> Result<Vec<u8>, Error> {
+pub fn to_vec(value: &impl Serialize) -> Result<Vec<u8>, Error> {
     let mut buf = vec![];
     to_writer(&mut buf, value)?;
     Ok(buf)
@@ -34,6 +34,6 @@ pub fn to_vec(value: impl Serialize) -> Result<Vec<u8>, Error> {
 /// Serializes `value` into [`writer`][Write].
 ///
 /// See [`serializer`] for information about the data format.
-pub fn to_writer(writer: &mut (impl ?Sized + Write), value: impl Serialize) -> Result<(), Error> {
+pub fn to_writer(writer: &mut (impl ?Sized + Write), value: &impl Serialize) -> Result<(), Error> {
     value.serialize(serializer(writer))
 }

@@ -33,7 +33,7 @@ fn invalid_key() {
         flex: &'static str,
     }
 
-    let err = to_string(InvalidKey {
+    let err = to_string(&InvalidKey {
         flex: "prosthetics",
     })
     .unwrap_err();
@@ -48,7 +48,7 @@ fn escapes() {
         field: &'static str,
     }
 
-    let serialized = to_string(StrField {
+    let serialized = to_string(&StrField {
         field: "slash: \\, newline: \n, quote: \"",
     })
     .unwrap();

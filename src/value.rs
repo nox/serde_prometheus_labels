@@ -107,8 +107,8 @@ where
         self.end_value()
     }
 
-    fn serialize_bytes(self, value: &[u8]) -> Result<Self::Ok, Error> {
-        self.serialize_str(str::from_utf8(value).map_err(Error::invalid_data)?)
+    fn serialize_bytes(self, _value: &[u8]) -> Result<Self::Ok, Error> {
+        Err(self.unexpected(Unexpected::Bytes))
     }
 
     fn serialize_unit(self) -> Result<Self::Ok, Error> {
@@ -306,10 +306,7 @@ where
 
     fn unexpected(&self, kind: Unexpected) -> Error {
         #[derive(Debug)]
-        struct UnexpectedValueError {
-            at: &'static str,
-            kind: Unexpected,
-        }
+        struct UnexpectedValueError(Unexpected);
 
         impl error::Error for UnexpectedValueError {
             #[allow(deprecated)]
@@ -320,11 +317,11 @@ where
 
         impl fmt::Display for UnexpectedValueError {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                write!(f, "unexpected {} at key {}", self.kind, self.at)
+                write!(f, "unexpected {}", self.0)
             }
         }
 
-        Error::invalid_input(UnexpectedValueError { at: self.key, kind })
+        Error::invalid_input(UnexpectedValueError(kind))
     }
 }
 

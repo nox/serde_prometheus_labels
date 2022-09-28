@@ -46,7 +46,7 @@ impl error::Error for Error {
 
 impl serde::ser::Error for Error {
     fn custom<T: fmt::Display>(msg: T) -> Self {
-        Self::other(msg.to_string())
+        Self::new(io::Error::new(io::ErrorKind::Other, msg.to_string()))
     }
 }
 
@@ -55,16 +55,8 @@ impl Error {
         Self { inner }
     }
 
-    pub(crate) fn invalid_data(inner: impl Into<Box<dyn error::Error + Send + Sync>>) -> Self {
-        Self::new(io::Error::new(io::ErrorKind::InvalidData, inner))
-    }
-
     pub(crate) fn invalid_input(inner: impl Into<Box<dyn error::Error + Send + Sync>>) -> Self {
         Self::new(io::Error::new(io::ErrorKind::InvalidInput, inner))
-    }
-
-    pub(crate) fn other(inner: impl Into<Box<dyn error::Error + Send + Sync>>) -> Self {
-        Self::new(io::Error::new(io::ErrorKind::Other, inner))
     }
 }
 
@@ -95,12 +87,12 @@ impl fmt::Display for Unexpected {
             Unexpected::Struct(name) => write!(f, "struct {name}"),
             Unexpected::Tuple(len) => write!(f, "tuple of len {len}"),
             Unexpected::Variant(ty, name) => write!(f, "variant {ty}::{name}"),
-            Unexpected::Unsigned(_) => todo!(),
-            Unexpected::Signed(_) => todo!(),
-            Unexpected::Float(_) => todo!(),
-            Unexpected::Char(_) => todo!(),
-            Unexpected::Str => todo!(),
-            Unexpected::Bytes => todo!(),
+            Unexpected::Unsigned(u) => write!(f, "unsigned integer {u}"),
+            Unexpected::Signed(i) => write!(f, "unsigned integer {i}"),
+            Unexpected::Float(fp) => write!(f, "floating-point number {fp}"),
+            Unexpected::Char(c) => write!(f, "char {c:?}"),
+            Unexpected::Str => f.write_str("string"),
+            Unexpected::Bytes => f.write_str("bytes"),
         }
     }
 }

@@ -29,8 +29,8 @@ impl From<Error> for io::Error {
 }
 
 impl error::Error for Error {
-    #[allow(deprecated)]
     fn description(&self) -> &str {
+        #[allow(deprecated)]
         self.inner.description()
     }
 
@@ -39,7 +39,7 @@ impl error::Error for Error {
         self.inner.cause()
     }
 
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+    fn source(&self) -> Option<&(dyn 'static + error::Error)> {
         self.inner.source()
     }
 }

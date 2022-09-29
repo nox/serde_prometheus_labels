@@ -52,6 +52,6 @@ pub fn to_writer(writer: &mut (impl ?Sized + Write), value: &impl Serialize) -> 
 /// [doc]: https://github.com/prometheus/docs/blob/main/content/docs/instrumenting/exposition_formats.md#text-format-details
 pub fn serializer(
     writer: &mut (impl ?Sized + Write),
-) -> impl Serializer<Ok = (), Error = Error> + '_ {
+) -> impl '_ + Serializer<Ok = (), Error = Error> {
     top::TopSerializer::new(str::Writer::new(writer))
 }

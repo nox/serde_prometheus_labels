@@ -64,6 +64,8 @@ impl AsciiPattern {
         Self { chars }
     }
 
+    /// If `Some(_)` is returned, `haystack` then points to the rest of the
+    /// string after the match.
     pub(crate) fn take_until_match<'a>(self, haystack: &mut &'a str) -> Option<(&'a str, u8)> {
         let bytes = haystack.as_bytes();
 
@@ -74,7 +76,7 @@ impl AsciiPattern {
 
         let found = bytes[chunk_end];
 
-        // SAFETY: chunk_end is a char boundary, as bytes[chunk_end] is an ASCII char
+        // SAFETY: chunk_end + 1 is a char boundary, as bytes[chunk_end] is an ASCII char
         // and ASCII chars are always only 1 byte when encoded as UTF-8.
         *haystack = unsafe { str::from_utf8_unchecked(&bytes[chunk_end..][1..]) };
 

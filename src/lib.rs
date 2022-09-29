@@ -3,9 +3,9 @@ use std::io::Write;
 
 mod comma;
 mod error;
+mod str;
 mod top;
 mod value;
-mod str;
 
 pub use self::error::Error;
 

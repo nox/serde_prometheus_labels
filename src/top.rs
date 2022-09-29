@@ -1,7 +1,7 @@
 use crate::comma::ShouldWriteComma;
 use crate::error::{Error, Unexpected};
-use crate::value;
 use crate::str::Writer;
+use crate::value;
 use serde::ser::{Impossible, Serialize, SerializeStruct, Serializer};
 use std::error;
 use std::fmt;

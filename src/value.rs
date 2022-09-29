@@ -1,17 +1,17 @@
 use crate::comma::{ShouldWriteComma, WroteAnything};
-use crate::error::Unexpected;
-use crate::Error;
+use crate::error::{Error, Unexpected};
+use crate::str::{AsciiPattern, Writer};
 use serde::ser::{Impossible, Serialize, Serializer};
 use std::{error, fmt, io, str};
 
 #[inline]
 pub(crate) fn serializer<'w, W>(
-    writer: &'w mut W,
+    writer: Writer<'w, W>,
     key: &'static str,
     should_write_comma: ShouldWriteComma,
-) -> impl Serializer<Ok = WroteAnything, Error = Error> + 'w
+) -> impl 'w + Serializer<Ok = WroteAnything, Error = Error>
 where
-    W: io::Write,
+    W: ?Sized + io::Write,
 {
     ValueSerializer {
         should_write_comma,
@@ -20,8 +20,11 @@ where
     }
 }
 
-struct ValueSerializer<'w, W> {
-    writer: &'w mut W,
+struct ValueSerializer<'w, W>
+where
+    W: ?Sized,
+{
+    writer: Writer<'w, W>,
     key: &'static str,
     should_write_comma: ShouldWriteComma,
 }
@@ -37,7 +40,7 @@ macro_rules! delegate {
 
 impl<'w, W> Serializer for ValueSerializer<'w, W>
 where
-    W: io::Write,
+    W: ?Sized + io::Write,
 {
     type Ok = WroteAnything;
     type Error = Error;
@@ -103,7 +106,7 @@ where
 
     fn serialize_str(mut self, value: &str) -> Result<Self::Ok, Error> {
         self.begin_value()?;
-        write_escaped(&mut *self.writer, value).map_err(Error::new)?;
+        write_escaped(self.writer.reborrow(), value).map_err(Error::new)?;
         self.end_value()
     }
 
@@ -207,19 +210,22 @@ where
     where
         T: ?Sized + fmt::Display,
     {
-        struct Adapter<'w, W: 'w> {
-            writer: &'w mut W,
+        struct Adapter<'w, W>
+        where
+            W: ?Sized,
+        {
+            writer: Writer<'w, W>,
             error: Option<Error>,
         }
 
         impl<'w, W> fmt::Write for Adapter<'w, W>
         where
-            W: io::Write,
+            W: ?Sized + io::Write,
         {
             fn write_str(&mut self, s: &str) -> fmt::Result {
                 debug_assert!(self.error.is_none());
 
-                write_escaped(&mut *self.writer, s).map_err(|err| {
+                write_escaped(self.writer.reborrow(), s).map_err(|err| {
                     self.error = Some(Error::new(err));
 
                     fmt::Error
@@ -231,7 +237,7 @@ where
 
         {
             let mut adapter = Adapter {
-                writer: &mut *self.writer,
+                writer: self.writer.reborrow(),
                 error: None,
             };
 
@@ -253,7 +259,7 @@ where
 
 impl<'w, W> ValueSerializer<'w, W>
 where
-    W: io::Write,
+    W: ?Sized + io::Write,
 {
     fn serialize_integer<I>(mut self, value: I) -> Result<WroteAnything, Error>
     where
@@ -289,13 +295,11 @@ where
             self.write_unchecked(",")?;
         }
 
-        self.writer
-            .write_all(self.key.as_bytes())
-            .map_err(Error::new)
+        self.writer.write_str(self.key).map_err(Error::new)
     }
 
     fn write_unchecked(&mut self, raw: &str) -> Result<(), Error> {
-        self.writer.write_all(raw.as_bytes()).map_err(Error::new)
+        self.writer.write_str(raw).map_err(Error::new)
     }
 
     fn end_value(&mut self) -> Result<WroteAnything, Error> {
@@ -325,21 +329,27 @@ where
     }
 }
 
-fn write_escaped(mut writer: impl io::Write, s: &str) -> Result<(), io::Error> {
-    let mut bytes = s.as_bytes();
+fn write_escaped(
+    mut writer: Writer<'_, impl ?Sized + io::Write>,
+    mut s: &str,
+) -> Result<(), io::Error> {
+    const PATTERN: AsciiPattern = AsciiPattern::new(b"\"\\\n");
 
-    while let Some(chunk_end) = bytes.iter().position(|c| b"\"\\\n".contains(c)) {
-        let chunk = &bytes[..chunk_end];
+    while let Some((chunk, found)) = PATTERN.take_until_match(&mut s) {
+        writer.write_str(chunk)?;
 
-        writer.write_all(chunk)?;
+        let escape_buf: [u8; 2];
 
-        let c = bytes[chunk_end];
-        let buf = if c == b'\n' { *br#"\n"# } else { [b'\\', c] };
+        writer.write_str(if found == b'\n' {
+            r#"\n"#
+        } else {
+            escape_buf = [b'\\', found];
 
-        writer.write_all(&buf)?;
-
-        bytes = &bytes[chunk_end..][1..];
+            // SAFETY: We know that `found` is an ASCII char, so `escape_buf`
+            // contains valid UTF-8.
+            unsafe { std::str::from_utf8_unchecked(&escape_buf) }
+        })?;
     }
 
-    writer.write_all(bytes)
+    writer.write_str(s)
 }

@@ -1,34 +1,26 @@
 use crate::comma::ShouldWriteComma;
 use crate::error::{Error, Unexpected};
 use crate::value;
+use crate::str::Writer;
 use serde::ser::{Impossible, Serialize, SerializeStruct, Serializer};
 use std::error;
 use std::fmt;
 use std::io::Write;
 
-/// A serializer for Prometheus labels.
-///
-/// This serializer only supports structs.
-///
-/// For struct fields, the supported values are scalars, strings, and bytes
-/// that can be converted to strings. Nones and units are ignored, and unit
-/// variants are serialized as their name. Anything else results in an error.
-///
-/// Prometheus labels are a sequence of comma-separated key-value pairs
-/// as specified by the [Prometheus documentation][doc].
-///
-/// [doc]: https://github.com/prometheus/docs/blob/main/content/docs/instrumenting/exposition_formats.md#text-format-details
-pub fn serializer(
-    writer: &mut (impl ?Sized + Write),
-) -> impl Serializer<Ok = (), Error = Error> + '_ {
-    TopSerializer { writer }
-}
-
-struct TopSerializer<'w, W>
+pub(crate) struct TopSerializer<'w, W>
 where
     W: ?Sized,
 {
-    writer: &'w mut W,
+    writer: Writer<'w, W>,
+}
+
+impl<'w, W> TopSerializer<'w, W>
+where
+    W: ?Sized + Write,
+{
+    pub(crate) fn new(writer: Writer<'w, W>) -> Self {
+        Self { writer }
+    }
 }
 
 macro_rules! unsupported_scalars {
@@ -193,12 +185,12 @@ where
     }
 }
 
-struct StructSerializer<'w, W>
+pub(crate) struct StructSerializer<'w, W>
 where
     W: ?Sized,
 {
     should_write_comma: ShouldWriteComma,
-    writer: &'w mut W,
+    writer: Writer<'w, W>,
 }
 
 impl<W> SerializeStruct for StructSerializer<'_, W>
@@ -215,7 +207,7 @@ where
         check_key(key)?;
 
         self.should_write_comma |= value.serialize(value::serializer(
-            &mut self.writer,
+            self.writer.reborrow(),
             key,
             self.should_write_comma,
         ))?;

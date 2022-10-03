@@ -7,8 +7,7 @@ upon [Serde], a high performance generic serialization framework.
 [Serde]: https://github.com/serde-rs/serde
 [Prometheus labels]: https://github.com/prometheus/docs/blob/main/content/docs/instrumenting/exposition_formats.md#text-format-details
 
-Installation
-============
+## Installation
 
 This crate works with Cargo and can be found on [crates.io] with a `Cargo.toml` like:
 

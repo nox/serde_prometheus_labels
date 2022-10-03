@@ -12,6 +12,36 @@ pub use self::error::Error;
 /// Serializes `value` into a [`String`].
 ///
 /// See [`serializer`] for information about the data format.
+///
+/// #### Examples
+///
+/// Basic usage:
+///
+/// ```rust
+/// # use serde::Serialize;
+/// # use serde_prometheus_labels::to_string;
+/// #
+/// #[derive(Serialize)]
+/// struct Labels {
+///     method: Method,
+///     path: String,
+/// }
+///
+/// #[derive(Serialize)]
+/// enum Method {
+///     #[serde(rename = "GET")]
+///     Get,
+/// }
+///
+/// let labels = Labels {
+///     method: Method::Get,
+///     path: "/metrics".to_string(),
+/// };
+///
+/// let serialized = to_string(&labels).unwrap();
+///
+/// assert_eq!(serialized, r#"method="GET",path="/metrics""#);
+/// ```
 pub fn to_string(value: &impl Serialize) -> Result<String, Error> {
     let mut string = "".to_owned();
 
@@ -25,6 +55,36 @@ pub fn to_string(value: &impl Serialize) -> Result<String, Error> {
 /// Serializes `value` into a [`Vec<u8>`].
 ///
 /// See [`serializer`] for information about the data format.
+///
+/// #### Examples
+///
+/// Basic usage:
+///
+/// ```rust
+/// # use serde::Serialize;
+/// # use serde_prometheus_labels::to_vec;
+/// #
+/// #[derive(Serialize)]
+/// struct Labels {
+///     method: Method,
+///     path: String,
+/// }
+///
+/// #[derive(Serialize)]
+/// enum Method {
+///     #[serde(rename = "GET")]
+///     Get,
+/// }
+///
+/// let labels = Labels {
+///     method: Method::Get,
+///     path: "/metrics".to_string(),
+/// };
+///
+/// let serialized = to_vec(&labels).unwrap();
+///
+/// assert_eq!(serialized, br#"method="GET",path="/metrics""#);
+/// ```
 pub fn to_vec(value: &impl Serialize) -> Result<Vec<u8>, Error> {
     let mut buf = vec![];
     to_writer(&mut buf, value)?;

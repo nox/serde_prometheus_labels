@@ -1,23 +1,14 @@
-use crate::comma::{ShouldWriteComma, WroteAnything};
 use crate::error::{Error, Unexpected};
 use crate::str::{AsciiPattern, Writer};
 use serde::ser::{Impossible, Serialize, Serializer};
 use std::{error, fmt, io, str};
 
 #[inline]
-pub(crate) fn serializer<'w, W>(
-    writer: Writer<'w, W>,
-    key: &'static str,
-    should_write_comma: ShouldWriteComma,
-) -> impl 'w + Serializer<Ok = WroteAnything, Error = Error>
+pub(crate) fn serializer<W>(writer: Writer<'_, W>) -> impl '_ + Serializer<Ok = (), Error = Error>
 where
     W: ?Sized + io::Write,
 {
-    ValueSerializer {
-        should_write_comma,
-        key,
-        writer,
-    }
+    ValueSerializer { writer }
 }
 
 struct ValueSerializer<'w, W>
@@ -25,8 +16,6 @@ where
     W: ?Sized,
 {
     writer: Writer<'w, W>,
-    key: &'static str,
-    should_write_comma: ShouldWriteComma,
 }
 
 macro_rules! delegate {
@@ -42,7 +31,7 @@ impl<'w, W> Serializer for ValueSerializer<'w, W>
 where
     W: ?Sized + io::Write,
 {
-    type Ok = WroteAnything;
+    type Ok = ();
     type Error = Error;
     type SerializeSeq = Impossible<Self::Ok, Error>;
     type SerializeTuple = Impossible<Self::Ok, Error>;
@@ -53,10 +42,7 @@ where
     type SerializeStructVariant = Impossible<Self::Ok, Error>;
 
     fn serialize_bool(mut self, v: bool) -> Result<Self::Ok, Error> {
-        self.write_key()?;
-        self.write_unchecked(if v { r#"="true""# } else { r#"="false""# })?;
-
-        Ok(WroteAnything(true))
+        self.write_unchecked(if v { "true" } else { "false" })
     }
 
     delegate! {
@@ -84,30 +70,21 @@ where
     }
 
     fn serialize_char(mut self, v: char) -> Result<Self::Ok, Error> {
-        self.write_key()?;
-
         self.write_unchecked(match v {
-            '"' => r#"="\"""#,
-            '\\' => r#"="\\""#,
-            '\n' => r#"="\n""#,
+            '"' => r#"\""#,
+            '\\' => r#"\\"#,
+            '\n' => r#"\n"#,
             _ => {
                 let mut buf = [0; 4];
                 let part = v.encode_utf8(&mut buf);
 
-                self.write_unchecked(r#"=""#)?;
-                self.write_unchecked(part)?;
-
-                return self.end_value();
+                return self.write_unchecked(part);
             }
-        })?;
-
-        Ok(WroteAnything(true))
+        })
     }
 
     fn serialize_str(mut self, value: &str) -> Result<Self::Ok, Error> {
-        self.begin_value()?;
-        write_escaped(self.writer.reborrow(), value).map_err(Error::new)?;
-        self.end_value()
+        write_escaped(self.writer.reborrow(), value).map_err(Error::new)
     }
 
     fn serialize_bytes(self, _value: &[u8]) -> Result<Self::Ok, Error> {
@@ -115,7 +92,7 @@ where
     }
 
     fn serialize_unit(self) -> Result<Self::Ok, Error> {
-        Ok(WroteAnything(false))
+        Ok(())
     }
 
     fn serialize_unit_variant(
@@ -148,7 +125,7 @@ where
     }
 
     fn serialize_none(self) -> Result<Self::Ok, Error> {
-        Ok(WroteAnything(false))
+        Ok(())
     }
 
     fn serialize_some<T>(self, value: &T) -> Result<Self::Ok, Error>
@@ -233,23 +210,19 @@ where
             }
         }
 
-        self.begin_value()?;
+        let mut adapter = Adapter {
+            writer: self.writer.reborrow(),
+            error: None,
+        };
 
-        {
-            let mut adapter = Adapter {
-                writer: self.writer.reborrow(),
-                error: None,
-            };
+        match fmt::write(&mut adapter, format_args!("{}", value)) {
+            Ok(()) => {
+                debug_assert!(adapter.error.is_none());
 
-            match fmt::write(&mut adapter, format_args!("{}", value)) {
-                Ok(()) => debug_assert!(adapter.error.is_none()),
-                Err(fmt::Error) => {
-                    return Err(adapter.error.expect("there should be an error"));
-                }
+                Ok(())
             }
+            Err(fmt::Error) => Err(adapter.error.expect("there should be an error")),
         }
-
-        self.end_value()
     }
 
     fn is_human_readable(&self) -> bool {
@@ -261,51 +234,28 @@ impl<'w, W> ValueSerializer<'w, W>
 where
     W: ?Sized + io::Write,
 {
-    fn serialize_integer<I>(mut self, value: I) -> Result<WroteAnything, Error>
+    fn serialize_integer<I>(mut self, value: I) -> Result<(), Error>
     where
         I: itoa::Integer,
     {
         let mut buf = itoa::Buffer::new();
         let part = buf.format(value);
 
-        self.begin_value()?;
-        self.write_unchecked(part)?;
-        self.end_value()
+        self.write_unchecked(part)
     }
 
-    fn serialize_floating<F>(mut self, value: F) -> Result<WroteAnything, Error>
+    fn serialize_floating<F>(mut self, value: F) -> Result<(), Error>
     where
         F: ryu::Float,
     {
         let mut buf = ryu::Buffer::new();
         let part = buf.format(value);
 
-        self.begin_value()?;
-        self.write_unchecked(part)?;
-        self.end_value()
-    }
-
-    fn begin_value(&mut self) -> Result<(), Error> {
-        self.write_key()?;
-        self.write_unchecked(r#"=""#)
-    }
-
-    fn write_key(&mut self) -> Result<(), Error> {
-        if self.should_write_comma.0 {
-            self.write_unchecked(",")?;
-        }
-
-        self.writer.write_str(self.key).map_err(Error::new)
+        self.write_unchecked(part)
     }
 
     fn write_unchecked(&mut self, raw: &str) -> Result<(), Error> {
         self.writer.write_str(raw).map_err(Error::new)
-    }
-
-    fn end_value(&mut self) -> Result<WroteAnything, Error> {
-        self.write_unchecked(r#"""#)?;
-
-        Ok(WroteAnything(true))
     }
 
     fn unexpected(&self, kind: Unexpected) -> Error {

@@ -1,4 +1,3 @@
-use crate::comma::ShouldWriteComma;
 use crate::error::{Error, Unexpected};
 use crate::str::Writer;
 use crate::value;
@@ -168,7 +167,7 @@ where
         _len: usize,
     ) -> Result<Self::SerializeStruct, Error> {
         Ok(StructSerializer {
-            should_write_comma: ShouldWriteComma(false),
+            has_written_anything: false,
             writer: self.writer,
         })
     }
@@ -189,7 +188,7 @@ pub(crate) struct StructSerializer<'w, W>
 where
     W: ?Sized,
 {
-    should_write_comma: ShouldWriteComma,
+    has_written_anything: bool,
     writer: Writer<'w, W>,
 }
 
@@ -206,17 +205,24 @@ where
     {
         check_key(key)?;
 
-        self.should_write_comma |= value.serialize(value::serializer(
-            self.writer.reborrow(),
-            key,
-            self.should_write_comma,
-        ))?;
+        if self.has_written_anything {
+            self.writer.write_str("\",").map_err(Error::new)?;
+        } else {
+            self.has_written_anything = true;
+        }
 
-        Ok(())
+        self.writer.write_str(key).map_err(Error::new)?;
+        self.writer.write_str("=\"").map_err(Error::new)?;
+
+        value.serialize(value::serializer(self.writer.reborrow()))
     }
 
     #[inline]
-    fn end(self) -> Result<(), Error> {
+    fn end(mut self) -> Result<(), Error> {
+        if self.has_written_anything {
+            self.writer.write_str("\"").map_err(Error::new)?;
+        }
+
         Ok(())
     }
 }

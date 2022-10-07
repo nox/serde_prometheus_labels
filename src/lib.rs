@@ -1,7 +1,6 @@
 use serde::ser::{Serialize, Serializer};
 use std::io::Write;
 
-mod comma;
 mod error;
 mod str;
 mod top;
@@ -41,6 +40,28 @@ pub use self::error::Error;
 /// let serialized = to_string(&labels).unwrap();
 ///
 /// assert_eq!(serialized, r#"method="GET",path="/metrics""#);
+/// ```
+///
+/// Optional values:
+///
+/// ```rust
+/// # use serde::Serialize;
+/// # use serde_prometheus_labels::to_string;
+/// #
+/// #[derive(Serialize)]
+/// struct Error {
+///     severity: Option<&'static str>,
+///     reason: Option<&'static str>,
+/// }
+///
+/// let error = Error {
+///     severity: Some("fatal"),
+///     reason: None,
+/// };
+///
+/// let serialized = to_string(&error).unwrap();
+///
+/// assert_eq!(serialized, r#"severity="fatal",reason="""#);
 /// ```
 pub fn to_string(value: &impl Serialize) -> Result<String, Error> {
     let mut string = "".to_owned();

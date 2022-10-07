@@ -1,10 +1,15 @@
 use serde::ser::{Serialize, Serializer};
 use std::io::Write;
 
+#[cfg(feature = "bridge")]
+mod bridge;
 mod error;
 mod str;
 mod top;
 mod value;
+
+#[cfg(feature = "bridge")]
+pub use self::bridge::Family;
 
 pub use self::error::Error;
 

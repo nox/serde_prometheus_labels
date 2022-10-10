@@ -21,6 +21,14 @@ The documentation is available on [docs.rs].
 [crates.io]: https://crates.io/crates/serde_prometheus_labels
 [docs.rs]: https://docs.rs/serde_prometheus_labels/0.1.0/
 
+### Bridge to prometheus-client
+
+With the feature "bridge" enabled, this crate provides a wrapper
+to `prometheus_client::metrics::family::Family` which uses `serde::Serialize`
+instead of `prometheus_client::encoding::text::Encode` to encode the label set
+used by this family. The bridge is available directly at the root of the crate
+as `serde_prometheus_labels::Family`.
+
 ## Getting help
 
 You can find me on IRC either in `##rust` or `#rust-fr` on

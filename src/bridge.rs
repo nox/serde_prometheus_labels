@@ -12,6 +12,65 @@ use std::{fmt, io};
 
 /// A wrapper around [`prometheus_client::metrics::family::Family`] which
 /// encodes its labels with [`Serialize`] instead of [`Encode`].
+///
+/// #### Examples
+///
+/// Basic usage:
+///
+/// ```rust
+/// # use prometheus_client::{
+/// #     encoding::text::encode,
+/// #     metrics::counter::Counter,
+/// #     registry::Registry,
+/// # };
+/// # use serde::Serialize;
+/// # use serde_prometheus_labels::Family;
+/// #
+/// #[derive(Clone, Eq, Hash, PartialEq, Serialize)]
+/// struct Labels {
+///     method: Method,
+///     host: String,
+/// }
+///
+/// #[derive(Clone, Eq, Hash, PartialEq, Serialize)]
+/// enum Method {
+///     #[serde(rename = "GET")]
+///     Get,
+/// }
+///
+/// let family = <Family<Labels, Counter>>::default();
+/// let mut registry = Registry::with_prefix("http");
+///
+/// registry.register(
+///     "Incoming requests",
+///     "Number of requests per method and per host",
+///     family.clone(),
+/// );
+///
+/// family
+///     .get_or_create(&Labels {
+///         method: Method::Get,
+///         host: "unionize.org".to_string(),
+///     })
+///     .inc();
+///
+/// let mut serialized = String::new();
+///
+/// // SAFETY: We know prometheus-client only writes UTF-8 slices.
+/// unsafe {
+///     encode(&mut serialized.as_mut_vec(), &registry).unwrap();
+/// }
+///
+/// assert_eq!(
+///     serialized,
+///     concat!(
+///         "# HELP http_Incoming requests Number of requests per method and per host.\n",
+///         "# TYPE http_Incoming requests counter\n",
+///         "http_Incoming requests_total{method=\"GET\",host=\"unionize.org\"} 1\n",
+///         "# EOF\n",
+///     ),
+/// );
+/// ```
 #[derive(Debug)]
 pub struct Family<S, M, C = fn() -> M> {
     inner: InnerFamily<Bridge<S>, M, C>,

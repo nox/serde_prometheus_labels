@@ -13,13 +13,13 @@ This crate works with Cargo and can be found on [crates.io] with a `Cargo.toml` 
 
 ```toml
 [dependencies]
-serde_prometheus_labels = "0.1"
+serde_prometheus_labels = "0.2"
 ```
 
 The documentation is available on [docs.rs].
 
 [crates.io]: https://crates.io/crates/serde_prometheus_labels
-[docs.rs]: https://docs.rs/serde_prometheus_labels/0.1.0/
+[docs.rs]: https://docs.rs/serde_prometheus_labels/0.2.0/
 
 ### Bridge to prometheus-client
 

@@ -1,9 +1,9 @@
 [package]
 name = "serde_prometheus_labels"
-version = "0.1.0" # remember to update documentation link and readme
+version = "0.2.0" # remember to update documentation link and readme
 edition = "2021"
 description = "A serializer for Prometheus labels"
-documentation = "https://docs.rs/serde_prometheus_labels/0.1.0/"
+documentation = "https://docs.rs/serde_prometheus_labels/0.2.0/"
 repository = "https://github.com/nox/serde_prometheus_labels"
 keywords = ["prometheus", "serde", "serialization"]
 license = "MIT OR Apache-2.0"
@@ -23,3 +23,6 @@ serde = { version = "1", default-features = false, features = ["std"] }
 
 [dev-dependencies]
 serde = { version = "1", default-features = false, features = ["derive", "std"] }
+
+[package.metadata.docs.rs]
+features = ["bridge"]
